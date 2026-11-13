@@ -2,7 +2,7 @@
 
 > **Status: M5 (agent path + interactive TUI).** `pxd version`, `pxd config show`,
 > `pxd config path`, `pxd login`, `pxd logout`, `pxd whoami`, `pxd doctor`,
-> `pxd ls`, `pxd tree`, `pxd stat`, `pxd mkdir`, `pxd upload`, `pxd download`,
+> `pxd ls`, `pxd search`, `pxd tree`, `pxd stat`, `pxd mkdir`, `pxd upload`, `pxd download`,
 > `pxd mv`, `pxd rename`, `pxd rm`, `pxd trash ls|restore|empty`, `pxd url`,
 > `pxd link create`, `pxd token create|ls|revoke`, `pxd ui` and `pxd update` are
 > available.
@@ -23,16 +23,16 @@ Pin the version so a pipeline is reproducible, and install into a directory on
 `PATH` without `sudo`:
 
 ```sh
-curl -fsSL https://pxd.cotc.dev/install.sh | PXD_VERSION=v0.3.0 sh
+curl -fsSL https://pxd.cotc.dev/install.sh | PXD_VERSION=v0.2.0 sh
 
 # or from GitHub directly (same script; the domain is only a redirect):
 curl -fsSL https://raw.githubusercontent.com/novaladip/pxd/main/install.sh \
-  | PXD_VERSION=v0.3.0 PXD_INSTALL_DIR="$HOME/.local/bin" sh
+  | PXD_VERSION=v0.2.0 PXD_INSTALL_DIR="$HOME/.local/bin" sh
 ```
 
 The installer verifies the archive's SHA-256 against `checksums.txt` and aborts
 on a mismatch; it is quote-safe for a Docker `RUN` step. `PXD_QUIET=1` silences
-progress. Windows agents use `PXD_VERSION=v0.3.0` with
+progress. Windows agents use `PXD_VERSION=v0.2.0` with
 `irm https://pxd.cotc.dev/install.ps1 | iex`.
 
 Keep an installed CLI current with `pxd update` (`--check` reports without
@@ -166,6 +166,7 @@ pxd whoami [--json]
 pxd doctor [--json]
 pxd ls [path] [-l] [--type file|folder] [--sort name|modified|size|type]
         [--order asc|desc] [-q <text>] [--all]
+pxd search <query> [--limit N]
 pxd tree [path] [--depth N] [--json]
 pxd stat <path>
 pxd mkdir [-p] <path>
@@ -290,6 +291,30 @@ pxd ls /example/myapp --json
   pages consistently. `q` is a case-insensitive substring match.
 - `--all` includes entries whose name starts with `.` (hidden by default).
   Temp files created by `--on-conflict=overwrite` start with `.pxd-tmp-`.
+
+### search
+
+```sh
+pxd search app --json
+pxd search sunset --limit 10
+```
+
+```json
+{"ok":true,"query":"app","items":[{"id":"…","name":"app-1.4.0.apk","type":"file","size":48213344,"updated_at":"2026-11-09T10:00:00Z","path":"/example/myapp/app-1.4.0.apk"}],"total":1}
+```
+
+- Searches the caller's whole drive by name. Matching is a case-insensitive
+  substring match; `%` and `_` are literal characters. Leading and trailing
+  whitespace is trimmed, and the query must then be 1–200 characters.
+- The server ranks exact name matches first, then names that start with the
+  query, then any other match; within a rank folders come before files, then the
+  most recently updated. Trashed nodes, including a trashed folder's whole
+  subtree, are excluded.
+- `--limit` is `1..50` (default `20`). Search is a capped quick look, not a
+  paginated listing: `total` is the number of hits returned.
+- `path` is the full path including the hit itself; it is derived from the
+  server's ancestor breadcrumbs. Plain (non-TTY) and human output print one full
+  path per line, with a trailing `/` on folders.
 
 ### tree
 
